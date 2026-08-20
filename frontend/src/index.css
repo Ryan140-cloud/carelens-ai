@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-scale: 1;
+  }
+
+  html {
+    font-size: calc(16px * var(--font-scale));
+    scroll-behavior: smooth;
+  }
+
+  /* Universal High Contrast / Premium Dark Accessibility Mode */
+  html.high-contrast {
+    background-color: #090d16 !important;
+    color: #ffffff !important;
+  }
+
+  html.high-contrast body,
+  html.high-contrast main {
+    background-color: #090d16 !important;
+    color: #ffffff !important;
+  }
+
+  /* Card Containers, Headers, Footers & Section Backgrounds in Dark Mode */
+  html.high-contrast .bg-white,
+  html.high-contrast .bg-slate-50,
+  html.high-contrast .bg-slate-100,
+  html.high-contrast .bg-slate-900,
+  html.high-contrast section,
+  html.high-contrast footer {
+    background-color: #0f172a !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border-color: #1e293b !important;
+  }
+
+  /* Tinted Light Cards & Callout Banners in Dark Mode */
+  html.high-contrast .bg-sky-50,
+  html.high-contrast .bg-sky-50\/50,
+  html.high-contrast .bg-sky-100,
+  html.high-contrast .bg-teal-50,
+  html.high-contrast .bg-teal-100,
+  html.high-contrast .bg-emerald-50,
+  html.high-contrast .bg-emerald-100,
+  html.high-contrast .bg-amber-50,
+  html.high-contrast .bg-amber-100,
+  html.high-contrast .bg-red-50 {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+  }
+
+  /* Universal Bright Text Colors Across All Pages in Dark Mode */
+  html.high-contrast h1,
+  html.high-contrast h2,
+  html.high-contrast h3,
+  html.high-contrast h4,
+  html.high-contrast h5,
+  html.high-contrast h6,
+  html.high-contrast .text-slate-900,
+  html.high-contrast .text-slate-800,
+  html.high-contrast .text-slate-700,
+  html.high-contrast .text-slate-600,
+  html.high-contrast .text-slate-500,
+  html.high-contrast .text-slate-400,
+  html.high-contrast p,
+  html.high-contrast span:not(.bg-sky-600):not(.bg-teal-600):not(.bg-red-600),
+  html.high-contrast li,
+  html.high-contrast label,
+  html.high-contrast td,
+  html.high-contrast th,
+  html.high-contrast footer *,
+  html.high-contrast a {
+    color: #ffffff !important;
+  }
+
+  /* Colored Text Utility Overrides for Dark Mode High Contrast */
+  html.high-contrast .text-sky-900,
+  html.high-contrast .text-sky-800,
+  html.high-contrast .text-sky-700,
+  html.high-contrast .text-sky-600 {
+    color: #38bdf8 !important; /* Bright Sky Blue */
+  }
+
+  html.high-contrast .text-teal-950,
+  html.high-contrast .text-teal-900,
+  html.high-contrast .text-teal-800,
+  html.high-contrast .text-teal-700,
+  html.high-contrast .text-teal-600 {
+    color: #2dd4bf !important; /* Bright Teal */
+  }
+
+  html.high-contrast .text-emerald-950,
+  html.high-contrast .text-emerald-900,
+  html.high-contrast .text-emerald-800,
+  html.high-contrast .text-emerald-700 {
+    color: #34d399 !important; /* Bright Emerald Mint */
+  }
+
+  html.high-contrast .text-amber-950,
+  html.high-contrast .text-amber-900,
+  html.high-contrast .text-amber-800 {
+    color: #fbbf24 !important; /* Bright Amber Gold */
+  }
+
+  html.high-contrast .text-red-800,
+  html.high-contrast .text-red-900,
+  html.high-contrast .text-red-950 {
+    color: #f87171 !important; /* Bright Red */
+  }
+
+  /* Navigation Bar in Dark Mode */
+  html.high-contrast header {
+    background-color: rgba(15, 23, 42, 0.98) !important;
+    border-color: #1e293b !important;
+  }
+
+  /* Select Boxes & Option Dropdowns in Dark Mode */
+  html.high-contrast select,
+  html.high-contrast option,
+  html.high-contrast input {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+    border-color: #334155 !important;
+  }
+
+  /* Buttons & Links in Dark Mode */
+  html.high-contrast button:not(.bg-sky-600):not(.bg-teal-600):not(.bg-red-600),
+  html.high-contrast a:not(.bg-sky-600):not(.bg-slate-900) {
+    border-color: #334155 !important;
+  }
+
+  /* High-visibility keyboard focus outline */
+  *:focus-visible {
+    outline: 3px solid #0284c7 !important;
+    outline-offset: 3px !important;
+  }
+
+  html.high-contrast *:focus-visible {
+    outline: 3px solid #38bdf8 !important;
+    outline-offset: 3px !important;
+  }
+}
+
+/* Glassmorphism & Card Utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(51, 65, 85, 0.8);
+}
