@@ -38,6 +38,9 @@ class ImageQualityValidator:
         self.min_fg_tissue_ratio = min_fg_tissue_ratio
         self.min_warm_ratio_in_fg = min_warm_ratio_in_fg
 
+    def validate(self, image_bytes: bytes) -> Dict[str, Any]:
+        return self.validate_image_bytes(image_bytes)
+
     def validate_image_bytes(self, image_bytes: bytes) -> Dict[str, Any]:
         """
         Validates raw image bytes and determines whether the image is suitable

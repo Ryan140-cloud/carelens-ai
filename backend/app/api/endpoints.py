@@ -1,28 +1,26 @@
 """
-CareLens AI - REST API Endpoint Handlers
-Implements clean REST contracts with file validation, error handling,
-screening predictions, history management, and i18n support.
+CareLens AI - FastAPI Endpoint Routes
 """
 
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 
-from backend.app.models.database import get_db
-from backend.app.models.db_models import ScreeningHistory
 from backend.app.models.schemas import (
     ScreeningResponse, QualityCheckResponse, ModelInfoResponse,
-    HistoryCreateRequest, HistoryItemResponse, TranslationRequest, TranslationResponse, TTSRequest
+    HistoryItemResponse, HistoryCreateRequest, TranslationRequest,
+    TranslationResponse, TTSRequest
 )
-from backend.app.core.security import validate_uploaded_file
+from backend.app.models.database import get_db
+from backend.app.models.db_models import ScreeningHistory
 from backend.app.services.ml_service import MLService
 from backend.app.services.i18n_service import I18nService
-from ml.models.screening_model import CLASS_LABELS
+from backend.app.core.security import validate_uploaded_file, CLASS_LABELS
 
 router = APIRouter()
 
-@router.get("/health", tags=["Health"])
+@router.get("/health", tags=["System"])
 async def health_check():
     return {
         "status": "healthy",
@@ -84,25 +82,30 @@ async def screen_retinal_image(file: UploadFile = File(...), db: Session = Depen
         result = MLService.screen_image(contents)
 
         # Optionally auto-record screening metadata to history
-        if result["success"] and result["primary_finding"]:
-            history_entry = ScreeningHistory(
-                image_reference_id=f"IMG_{uuid.uuid4().hex[:8].upper()}",
-                primary_condition=result["primary_finding"]["class_name"],
-                risk_level=result["patient_friendly_explanation"]["risk_level"],
-                confidence_pct=result["primary_finding"]["confidence_pct"],
-                model_version="1.0.0",
-                is_ungradable=False,
-                explanation_summary=result["patient_friendly_explanation"]
-            )
-            db.add(history_entry)
-            db.commit()
+        if not result.get("is_ungradable") and result.get("primary_finding"):
+            try:
+                history_entry = ScreeningHistory(
+                    image_reference_id=f"IMG_{uuid.uuid4().hex[:8].upper()}",
+                    primary_condition=result["primary_finding"]["class_name"],
+                    risk_level=result["patient_friendly_explanation"]["risk_level"],
+                    confidence_pct=result["primary_finding"]["confidence_pct"],
+                    model_version="1.0.0",
+                    is_ungradable=False,
+                    explanation_summary=result["patient_friendly_explanation"]
+                )
+                db.add(history_entry)
+                db.commit()
+            except Exception as db_err:
+                print(f"[CareLens API Warning] Auto-recording to history failed: {db_err}")
 
         return ScreeningResponse(**result)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while analyzing the image. Please verify the image file and try again."
+            detail=f"An error occurred while analyzing the image: {str(e)}"
         )
 
 @router.get("/history", response_model=List[HistoryItemResponse], tags=["History"])

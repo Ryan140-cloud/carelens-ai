@@ -15,6 +15,16 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 import io
+from typing import Tuple
+
+def encode_image_to_base64(pil_img: Image.Image) -> str:
+    """
+    Converts PIL Image to Base64 data URL string.
+    """
+    buffer = io.BytesIO()
+    pil_img.save(buffer, format="JPEG", quality=90)
+    b64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/jpeg;base64,{b64_str}"
 
 class GradCAM:
     def __init__(self, model: torch.nn.Module, target_layer: torch.nn.Module):
@@ -33,7 +43,7 @@ class GradCAM:
     def _save_gradient(self, module, grad_input, grad_output):
         self.gradients = grad_output[0]
 
-    def generate_heatmap(
+    def generate_cam(
         self, input_tensor: torch.Tensor, target_class_idx: int = None
     ) -> np.ndarray:
         """
@@ -75,14 +85,14 @@ class GradCAM:
 
         return cam
 
-    def overlay_heatmap(
+    def overlay_heatmap_on_image(
         self,
         original_pil_image: Image.Image,
         heatmap_2d: np.ndarray,
         alpha: float = 0.45
-    ) -> Tuple[Image.Image, str]:
+    ) -> Image.Image:
         """
-        Overlays the 2D heatmap onto the original image and returns a Base64 data URL.
+        Overlays 2D heatmap onto original image.
         """
         w, h = original_pil_image.size
         img_np = np.array(original_pil_image.convert("RGB"))
@@ -99,12 +109,17 @@ class GradCAM:
         blended = np.float32(img_np) * (1.0 - alpha) + np.float32(color_heatmap) * alpha
         blended = np.clip(blended, 0, 255).astype(np.uint8)
 
-        overlay_pil = Image.fromarray(blended)
+        return Image.fromarray(blended)
 
-        # Convert overlay image to Base64 string for API response
-        buffer = io.BytesIO()
-        overlay_pil.save(buffer, format="JPEG", quality=90)
-        b64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
-        data_url = f"data:image/jpeg;base64,{b64_str}"
-
+    def overlay_heatmap(
+        self,
+        original_pil_image: Image.Image,
+        heatmap_2d: np.ndarray,
+        alpha: float = 0.45
+    ) -> Tuple[Image.Image, str]:
+        """
+        Overlays the 2D heatmap onto original image and returns a Base64 data URL.
+        """
+        overlay_pil = self.overlay_heatmap_on_image(original_pil_image, heatmap_2d, alpha)
+        data_url = encode_image_to_base64(overlay_pil)
         return overlay_pil, data_url

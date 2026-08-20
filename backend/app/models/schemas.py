@@ -11,28 +11,28 @@ class QualityCheckResponse(BaseModel):
     is_ungradable: bool
     user_message: str
     reason: str
-    metrics: Dict[str, Any]
+    metrics: Dict[str, Any] = {}
 
 class ClassProbability(BaseModel):
     class_name: str
-    short_code: str
-    probability: float
-    confidence_pct: float
-    is_positive: bool
+    short_code: str = "N"
+    probability: float = 0.0
+    confidence_pct: float = 0.0
+    is_positive: bool = False
 
 class PatientExplanation(BaseModel):
     finding_title: str
     risk_level: str
-    primary_condition: str
-    confidence_display: str
+    primary_condition: Optional[str] = "Retinal Finding"
+    confidence_display: Optional[str] = "Screening Result"
     patient_friendly_summary: str
     recommended_next_step: str
-    gradcam_explanation: str
+    gradcam_explanation: Optional[str] = "Visual heatmap highlights region of highest AI activation."
     medical_disclaimer: str
 
 class ScreeningResponse(BaseModel):
-    success: bool
-    is_ungradable: bool
+    success: bool = True
+    is_ungradable: bool = False
     quality_check: QualityCheckResponse
     primary_finding: Optional[ClassProbability] = None
     all_class_probabilities: Optional[List[ClassProbability]] = None

@@ -3,8 +3,12 @@ CareLens AI - Configuration Settings Module
 """
 
 import os
+import sys
 from typing import List
 from pydantic_settings import BaseSettings
+
+# Cross-platform SQLite default path resolution
+default_db_url = "sqlite:///./carelens.db" if sys.platform == "win32" else "sqlite:////tmp/carelens.db"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CareLens AI"
@@ -26,8 +30,8 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     SECRET_KEY: str = os.getenv("SECRET_KEY", "carelens-secret-key-change-in-production-2026")
 
-    # Database (Using /tmp/carelens.db for cloud write safety)
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////tmp/carelens.db")
+    # Database
+    DATABASE_URL: str = os.getenv("DATABASE_URL", default_db_url)
 
     # ML & Inference Config
     MODEL_TYPE: str = os.getenv("MODEL_TYPE", "efficientnet_b0")

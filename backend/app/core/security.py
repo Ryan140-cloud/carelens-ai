@@ -10,6 +10,17 @@ from backend.app.core.config import settings
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
+CLASS_LABELS = [
+    "Normal",
+    "Diabetic Retinopathy",
+    "Glaucoma",
+    "Cataract",
+    "Age-related Macular Degeneration",
+    "Hypertension",
+    "Myopia",
+    "Other Abnormality"
+]
+
 def validate_uploaded_file(filename: str, content_type: str, file_size_bytes: int):
     # 1. Size limit check
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
