@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     SECRET_KEY: str = os.getenv("SECRET_KEY", "carelens-secret-key-change-in-production-2026")
 
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./carelens.db")
+    # Database (Using /tmp/carelens.db for cloud write safety)
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////tmp/carelens.db")
 
     # ML & Inference Config
     MODEL_TYPE: str = os.getenv("MODEL_TYPE", "efficientnet_b0")
