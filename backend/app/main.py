@@ -2,6 +2,14 @@
 CareLens AI - FastAPI Application Entrypoint
 """
 
+import sys
+import os
+
+# Ensure project root is on sys.path for cloud deployment compatibility
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
