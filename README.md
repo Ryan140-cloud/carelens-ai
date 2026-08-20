@@ -1,6 +1,4 @@
-<<<<<<< HEAD
-# carelens-ai
-=======
+
 # CareLens AI
 
 > **Tagline**: *“Detect Earlier. Understand Better. Act Sooner.”*
@@ -181,9 +179,7 @@ docker-compose up --build
 
 ---
 
-## 14. License & Author
 
 - **Project**: CareLens AI
 - **Hackathon**: Healthcare Technology Hackathon
-- **License**: MIT License
->>>>>>> bb600e9 (CareLens AI Round 2 Production Release)
+- **Submitted By**: Ridhi Jain
