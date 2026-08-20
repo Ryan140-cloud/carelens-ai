@@ -15,7 +15,6 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
 *.egg-info/
 .installed.cfg
@@ -30,12 +29,12 @@ env.bak/
 venv.bak/
 .venv
 
-# PyTorch / Models / Weights
+# PyTorch / Models / Weights (Unignore carelens_efficientnet_b0.pt for cloud deployment)
 *.pt
 *.pth
 *.onnx
 *.safetensors
-ml/checkpoints/
+!ml/checkpoints/carelens_efficientnet_b0.pt
 
 # Node / React
 node_modules/
