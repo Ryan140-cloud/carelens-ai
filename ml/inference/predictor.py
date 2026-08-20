@@ -6,6 +6,9 @@ from PIL import Image
 import numpy as np
 from typing import Dict, Any, List
 
+# Limit PyTorch CPU threads for lightweight cloud deployment compatibility
+torch.set_num_threads(1)
+
 from ml.models.screening_model import CareLensScreeningNet
 from ml.explainability.gradcam import GradCAM, encode_image_to_base64
 from ml.inference.quality_validator import ImageQualityValidator
@@ -77,7 +80,7 @@ RESPONSIBLE_EXPLANATIONS = {
 class CareLensPredictor:
     def __init__(self, checkpoint_path: str = "ml/checkpoints/carelens_efficientnet_b0.pt"):
         self.validator = ImageQualityValidator()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
         self.model = CareLensScreeningNet(backbone="efficientnet_b0", num_classes=8, pretrained=False)
 
         # Resolve Checkpoint Location
