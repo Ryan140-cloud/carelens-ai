@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://carelens-ai-ridhi-87.onrender.com/api/:path*"
+      "destination": "https://carelens-backend.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
