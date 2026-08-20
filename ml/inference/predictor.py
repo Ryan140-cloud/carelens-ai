@@ -1,33 +1,36 @@
-"""
-CareLens AI - End-to-End Inference Pipeline
-Integrates Image Quality Validation, PyTorch Model Inference, Grad-CAM Explainability,
-and Patient-Friendly Explanation Translation.
-
-STRICT CHECKPOINT LOADING: Fails explicitly if trained model weights checkpoint is missing.
-No random classification head fallbacks are permitted.
-"""
-
 import os
 import io
 import torch
-import numpy as np
+import torchvision.transforms as transforms
 from PIL import Image
-from torchvision import transforms
+import numpy as np
 from typing import Dict, Any, List
 
-from ml.models.screening_model import CareLensScreeningNet, CLASS_LABELS, CLASS_SHORT_NAMES
-from ml.inference.quality_validator import ImageQualityValidator, UNGRADABLE_MESSAGE
-from ml.explainability.gradcam import GradCAM
+from ml.models.screening_model import CareLensScreeningNet
+from ml.explainability.gradcam import GradCAM, encode_image_to_base64
+from ml.inference.quality_validator import ImageQualityValidator
 
-# Standard Medical Guidance templates for screening findings (Responsible Medical Wording)
-GUIDANCE_MAP = {
+CLASS_NAMES = [
+    "Normal",
+    "Diabetic Retinopathy",
+    "Glaucoma",
+    "Cataract",
+    "Age-related Macular Degeneration",
+    "Hypertension",
+    "Myopia",
+    "Other Abnormality"
+]
+
+CLASS_SHORT_CODES = ["N", "D", "G", "C", "A", "H", "M", "O"]
+
+RESPONSIBLE_EXPLANATIONS = {
     "Normal": {
-        "title": "No Significant Pathological Patterns Identified",
-        "patient_friendly": "The screening model did not identify obvious structural abnormalities in the uploaded image. Routine eye check-ups remain recommended.",
-        "recommended_next_step": "Maintain routine regular eye check-ups with an eye-care professional.",
+        "title": "No Obvious Screening Abnormality Identified",
+        "patient_friendly": "The AI screening model did not identify clear visual patterns of common retinal diseases in this fundus image.",
+        "recommended_next_step": "Maintain routine annual comprehensive eye examinations with an eye doctor.",
         "risk_level": "SCREENING OUTPUT"
     },
-    "Diabetes / Diabetic Retinopathy": {
+    "Diabetic Retinopathy": {
         "title": "Potential Microvascular Pattern Identified",
         "patient_friendly": "The screening model identified image patterns associated with diabetic retinopathy screening indicators. This result requires evaluation by an eye-care professional.",
         "recommended_next_step": "Schedule a comprehensive dilated eye exam with an ophthalmologist or optometrist for clinical evaluation.",
@@ -79,8 +82,11 @@ class CareLensPredictor:
 
         # Resolve Checkpoint Location
         target_ckpt = checkpoint_path
-        if not os.path.exists(target_ckpt) and os.path.exists("ml/checkpoints/carelens_efficientnet.pt"):
-            target_ckpt = "ml/checkpoints/carelens_efficientnet.pt"
+        if not os.path.exists(target_ckpt):
+            if os.path.exists("ml/checkpoints/carelens_efficientnet_b0.pt"):
+                target_ckpt = "ml/checkpoints/carelens_efficientnet_b0.pt"
+            elif os.path.exists("ml/checkpoints/carelens_efficientnet.pt"):
+                target_ckpt = "ml/checkpoints/carelens_efficientnet.pt"
 
         # STRICT CHECKPOINT REQUIREMENT - NO UNTRAINED / RANDOM FALLBACKS
         if not os.path.exists(target_ckpt):
@@ -118,98 +124,88 @@ class CareLensPredictor:
         """
         Full screening pipeline execution.
         """
-        # 1. Quality Validation Check
-        quality_result = self.validator.validate_image_bytes(image_bytes)
-
-        if not quality_result["is_valid"]:
+        # Step 1: Pre-Screening Image Quality Gate
+        quality = self.validator.validate(image_bytes)
+        if not quality["is_valid"]:
             return {
-                "success": False,
+                "quality_check": quality,
                 "is_ungradable": True,
-                "quality_check": quality_result,
-                "error_message": quality_result["user_message"],
-                "prediction": None,
+                "primary_finding": None,
+                "all_class_probabilities": [],
                 "gradcam_data_url": None,
-                "patient_friendly_explanation": None
+                "patient_friendly_explanation": {
+                    "finding_title": "Ungradable Image Quality",
+                    "patient_friendly_summary": quality["user_message"],
+                    "recommended_next_step": "Please capture or upload a clearer, well-focused retinal image.",
+                    "risk_level": "UNGRADABLE IMAGE",
+                    "medical_disclaimer": "CareLens AI is an AI-assisted screening decision-support tool. It does NOT diagnose patients, replace an eye doctor, guarantee medical outcomes, or prescribe medication."
+                }
             }
 
-        # 2. Preprocess image
+        # Step 2: PyTorch Model Inference
         pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         input_tensor = self.transform(pil_img).unsqueeze(0).to(self.device)
 
-        # 3. Model Inference (Multi-Label Sigmoid Probabilities)
         with torch.no_grad():
             logits = self.model(input_tensor)
-            probs = torch.sigmoid(logits).cpu().numpy()[0]
+            probabilities = torch.sigmoid(logits).squeeze(0).cpu().numpy()
 
-        # Map probabilities to classes
-        class_results = []
-        for idx, (label, short_code) in enumerate(zip(CLASS_LABELS, CLASS_SHORT_NAMES)):
-            prob = float(probs[idx])
-            class_results.append({
-                "class_name": label,
+        # Step 3: Class Probability Spectrum
+        class_spectrum = []
+        for i, (name, short_code) in enumerate(zip(CLASS_NAMES, CLASS_SHORT_CODES)):
+            prob = float(probabilities[i])
+            class_spectrum.append({
+                "class_name": name,
                 "short_code": short_code,
-                "probability": round(prob, 4),
                 "confidence_pct": round(prob * 100, 1),
-                "is_positive": bool(prob >= 0.45)
+                "is_positive": prob >= 0.45
             })
 
-        # Identify primary finding (highest probability non-normal, or normal if all low)
-        sorted_results = sorted(class_results, key=lambda x: x["probability"], reverse=True)
-        primary_finding = sorted_results[0]
+        # Identify Primary Finding
+        primary_idx = int(np.argmax(probabilities))
+        primary_class = CLASS_NAMES[primary_idx]
+        primary_prob = float(probabilities[primary_idx])
 
-        if primary_finding["class_name"] == "Normal" and primary_finding["probability"] < 0.6:
-            # Check if any disease condition has notable probability
-            disease_findings = [r for r in sorted_results if r["class_name"] != "Normal" and r["probability"] >= 0.40]
-            if disease_findings:
-                primary_finding = disease_findings[0]
-
-        primary_class_name = primary_finding["class_name"]
-        primary_prob = primary_finding["probability"]
-        primary_idx = CLASS_LABELS.index(primary_class_name)
-
-        # 4. Generate Grad-CAM Visual Heatmap Overlay
+        # Step 4: Explainable AI Grad-CAM Saliency Map Generation
+        gradcam_data_url = None
         try:
-            # Require grad for backward pass in Grad-CAM
-            input_tensor_grad = input_tensor.clone().detach().requires_grad_(True)
-            heatmap_2d = self.gradcam.generate_heatmap(input_tensor_grad, target_class_idx=primary_idx)
-            _, gradcam_data_url = self.gradcam.overlay_heatmap(pil_img, heatmap_2d)
+            cam_map = self.gradcam.generate_cam(input_tensor, target_class_idx=primary_idx)
+            overlay = self.gradcam.overlay_heatmap_on_image(pil_img, cam_map, alpha=0.5)
+            gradcam_data_url = encode_image_to_base64(overlay)
         except Exception as e:
-            print(f"[CareLens Predictor] Grad-CAM generation warning: {e}")
-            gradcam_data_url = None
+            print(f"[CareLens Predictor Warning] Grad-CAM generation failed: {e}")
 
-        # 5. Build Safe Patient-Friendly Explanation & Guidance
-        guidance = GUIDANCE_MAP.get(primary_class_name, GUIDANCE_MAP["Other Abnormality"])
-
-        explanation_data = {
-            "finding_title": guidance["title"],
-            "risk_level": guidance["risk_level"],
-            "primary_condition": primary_class_name,
-            "confidence_display": f"{round(primary_prob * 100, 1)}%",
-            "patient_friendly_summary": guidance["patient_friendly"],
-            "recommended_next_step": guidance["recommended_next_step"],
-            "gradcam_explanation": (
-                "The highlighted regions in the visual heatmap show areas of the retinal scan "
-                "that influenced the AI model's prediction. This visualization is provided for "
-                "model interpretability and is NOT a clinical diagnosis."
-            ),
-            "medical_disclaimer": (
-                "CareLens AI is an AI-assisted screening decision-support tool. "
-                "It does NOT diagnose patients, replace an eye doctor, or guarantee medical outcomes. "
-                "Always consult a qualified eye care professional for definitive clinical diagnosis and treatment."
-            )
-        }
+        # Step 5: Responsible Patient Explanation
+        explanation_template = RESPONSIBLE_EXPLANATIONS.get(
+            primary_class,
+            RESPONSIBLE_EXPLANATIONS["Other Abnormality"]
+        )
 
         return {
-            "success": True,
+            "quality_check": quality,
             "is_ungradable": False,
-            "quality_check": quality_result,
-            "primary_finding": primary_finding,
-            "all_class_probabilities": class_results,
+            "primary_finding": {
+                "class_name": primary_class,
+                "confidence_pct": round(primary_prob * 100, 1),
+                "is_abnormal": primary_idx != 0
+            },
+            "all_class_probabilities": class_spectrum,
             "gradcam_data_url": gradcam_data_url,
-            "patient_friendly_explanation": explanation_data,
+            "patient_friendly_explanation": {
+                "finding_title": explanation_template["title"],
+                "patient_friendly_summary": explanation_template["patient_friendly"],
+                "recommended_next_step": explanation_template["recommended_next_step"],
+                "risk_level": explanation_template["risk_level"],
+                "medical_disclaimer": (
+                    "CareLens AI is an AI-assisted screening decision-support tool. "
+                    "It does NOT diagnose patients, replace an eye doctor, guarantee medical outcomes, or prescribe medication. "
+                    "All screening results require clinical evaluation by a qualified healthcare professional."
+                )
+            },
             "model_metadata": {
-                "architecture": "EfficientNet-B0 (Transfer Learning)",
-                "dataset_source": self.dataset_version,
-                "version": self.model_version
+                "architecture": "EfficientNet-B0",
+                "model_version": getattr(self, "model_version", "1.1.0"),
+                "dataset_version": getattr(self, "dataset_version", "ODIR-5K Benchmark"),
+                "num_classes": 8
             }
         }

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # ML & Inference Config
     MODEL_TYPE: str = os.getenv("MODEL_TYPE", "efficientnet_b0")
-    MODEL_WEIGHTS_PATH: str = os.getenv("MODEL_WEIGHTS_PATH", "ml/checkpoints/carelens_efficientnet.pt")
+    MODEL_WEIGHTS_PATH: str = os.getenv("MODEL_WEIGHTS_PATH", "ml/checkpoints/carelens_efficientnet_b0.pt")
     CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.45"))
     ENABLE_GRADCAM: bool = os.getenv("ENABLE_GRADCAM", "True").lower() in ("true", "1")
 
