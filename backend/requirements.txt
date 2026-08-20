@@ -10,8 +10,4 @@ numpy<2.0.0
 opencv-python-headless>=4.9.0
 torch
 torchvision
-pytest>=8.0.0
-httpx>=0.27.0
-matplotlib>=3.8.0
-scikit-learn>=1.4.0
 gunicorn>=21.2.0
